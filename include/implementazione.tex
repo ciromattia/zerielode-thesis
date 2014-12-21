@@ -1,0 +1,252 @@
+\chapter{Implementazione tecnica}\label{chap:implementation}
+
+Per l'effettiva conversione del tracciato della Scheda F in uso dalla Fondazione Zeri era necessaria un'applicazione che si occupasse di realizzare in maniera automatica la mappatura definita in \ref{tab:schedaf-to-owl} richiedendo scarsa o nulla interazione da parte dell'utente; è stato quindi sviluppato uno strumento in \emph{Python} in grado di ritornare in output uno o più file RDF a fronte di un dataset in XML come input.\\
+
+Il codice aggiornato è disponibile su \emph{GitHub} all'indirizzo \url{https://github.com/ciromattia/zerielode} ed è rilasciato con licenza MIT\footnote{\url{http://opensource.org/licenses/MIT}}.
+
+\section{Analisi dei dati}\label{sec:data-analysis}
+
+Per l'analisi dei dati di partenza si è partiti dal dump completo dell'archivio Zeri in formato XML (del quale è riportato un esempio nel listato \ref{listing:sample-fzeri}).
+
+\lstinputlisting[language=XML, caption=Esempio di record Zeri, label=listing:sample-fzeri]{images/sample_fzeri.xml}
+
+\label{sec:fakerecord}Lo script \texttt{schema\_builder.py} è stato usato per generare un record fasullo che contenesse tutti i campi effettivamente in uso nell'intero dataset, in modo da avere una istantanea della situazione reale: il risultato si può leggere nel listato~\ref{listing:fzeri-fakerecord}. La necessità di generare tale report è nata dall'impossibilità di affidarsi all'analisi del singolo record, in quanto non necessariamente completo di tutti i campi, alcuni dei quali per giunta mutualmente esclusivi.
+
+Il record generato contiene ovviamente informazioni incoerenti tra di loro ma fondamentali per la revisione della struttura e la scrittura dell'algoritmo di parsing del dataset (cfr. tab.~\ref{tab:schedaf-to-owl} e figg.~\ref{fig:mapping-v3-1} e seguenti). Ha inoltre fornito degli importanti indizi sul formato del contenuto dei campi stessi, semplificando il successivo lavoro di conversione in statement RDF.
+
+L'organizzazione del singolo record è in paragrafi distinti; l'albero della singola scheda raggiunge una profondità di 3 o 4 nodi a seconda della ripetibilità del campo.
+
+Il primo livello è il \texttt{PARAGRAFO} che divide la scheda in aree concettuali; ogni paragrafo contiene una serie di campi singoli, opzionalmente racchiusi dal livello medio \texttt{RIPETIZIONE} nel caso il paragrafo stesso sia ripetibile più di una volta all'interno della stessa scheda (e.g. \emph{possessore} o \emph{collocazioni precedenti}).
+
+L'elenco completo dei campi e della loro struttura è stato dettagliato in tracciati (tab.~\ref{tab:fzeri-schedaF} e successive) incrociati con le specifiche fornite da ICCD (\cite{14,15})
+
+L'analisi si è quindi concentrata sulla mappatura di tale struttura appiattita verso una completa riconversione dei dati in un insieme di \emph{statement} RDF coerenti con FEO. Per realizzare l'effettiva conversione è stato realizzato un sistema di script che prenda in input l'esportazione in formato XML del database attuale dell'archivio fotografico Zeri e produca uno o più file RDF da caricare in seguito in un triple store.
+
+\section{Scelta del linguaggio e delle tecnologie}
+
+Inizialmente, data la natura di formato dei dati in input (XML) si è pensato alla definizione di un foglio di stile (XSL) applicando il quale si sarebbe ottenuta la trasformazione del dataset in un insieme di statement RDF. L'impegno nel definire tale foglio di stile è risultato però gravoso e non espandibile a meno di ulteriori sforzi: l'eventuale foglio di stile sarebbe infatti stato limitato in diversi modi (si noti che tali limitazioni non sono assolute ed esiste la possibilità di implementazione, il costo di sviluppo per superare i limiti presentati risulta però decisamente svantaggioso):
+\begin{description}
+\item[struttura] Un foglio di stile è legato ad una sola e precisa struttura dei dati in input: nel caso di dati mal strutturati o definiti la trasformazione XSLT è prona ad errori e fallimenti più di un approccio programmatico.
+\item[formato] Il foglio di stile produce uno e un solo formato in output: questo può risultare limitante dal momento che RDF può essere espresso in svariati linguaggi (Turtle, N3, RDF/XML, \ldots).
+\item[flessibilità] La possibilità di suddividere l'output in molteplici file è di difficile implementazione, soprattutto all'interno di un singolo foglio di stile.
+\end{description}
+
+XSL è stato quindi abbandonato preferendo in sua vece la flessibilità e comodità di \emph{Python} e dell'ottimo modulo \emph{rdflib}, che ha consentito l'implementazione completa e robusta della mappatura concettuale a livello applicativo.
+
+Lo sviluppo si è svolto attorno ad uno script principale che funge da entry point della procedura di conversione, disegnato per accettare diversi argomenti che ne modificano il comportamento in particolar modo per quanto riguarda l'output generato.
+
+\begin{noindent}
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[frame=single,caption=Help in linea di \texttt{fzeri\_schedaF\_to\_owl.py}, label=listing:usage]
+usage: fzeri_schedaF_to_owl.py [-h] [--single-entry] [-o OUTPUT_FILE]
+                               [-f FORMAT]
+                               source_file [source_file ...]
+
+FZeri to CIDOC-CRM catalog conversion script.
+
+positional arguments:
+  source_file           FZeri catalog file(s) path
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --single-entry        Outputs entries in a single file for each one.
+  -o OUTPUT_FILE, --output OUTPUT_FILE
+                        Output file or directory name
+  -f FORMAT, --format FORMAT
+                        Output format (xml|n3|turtle|nt|pretty-xml|trix)
+\end{lstlisting}
+\end{minipage}
+\end{noindent}
+
+L'esigenza di differenziare il formato in output è nata dalla varietà di strumenti esistenti per il consumo di RDF: ad esempio, il software \emph{Protégé}\footnote{\url{http://protege.stanford.edu}} è risultato incapace di caricare gli statement generati in formato \emph{Turtle}, mentre ha caricato correttamente il formato \emph{RDF/XML}.
+
+Per lo stesso motivo è stato utile aggiungere come opzione la possibilità di avere in output, in luogo di un unico file contenente tutto il grafo RDF, un file singolo per ogni scheda all'interno della directory specificata, così da renderne possibile il caricamento parziale o completo anche su macchine senza un adeguato quantitativo di memoria disponibile.
+
+A fianco dello script principale è stata creata la classe \texttt{FZeriParserSchedaF} definita in \texttt{fzeri\_parser\_schedaF.py} che si occupa di percorrere l'albero di una singola scheda in formato XML e di generare il corrispondente set di statement RDF.
+
+L'attuale mappatura viene eseguita da un set di funzioni specifiche per ogni paragrafo: tale scelta è stata effettuata in virtù della specificità dei singoli paragrafi così da mantenere il più possibile la granularità delle informazioni attualmente registrate nel dataset in input.
+
+\section{Implementazione interna}
+
+\subsection{Panoramica di funzionamento}
+Lo script principale carica il file in input in una struttura \texttt{etree} (caricata dal modulo \texttt{lxml} oppure da \texttt{xml.etree.ElementTree} nel caso il primo non sia presente nel sistema) e genera un nuovo grafo RDF tramite la chiamata \texttt{Graph()} di \texttt{rdflib}, associando i namespace delle ontologie utilizzate.
+
+Rileva quindi tutti gli elementi \texttt{SCHEDA} dell'albero XML e per ognuno crea una nuova istanza della classe \texttt{FZeriParserSchedaF} passando come argomento il sottoalbero (ovvero la singola scheda) e il grafo RDF globale\footnote{nel caso sia specificato l'argomento \texttt{--single-entry}, per ogni singola scheda viene creato un nuovo grafo che viene poi salvato su un file individuale.}, chiamando infine il metodo \texttt{parse()} dell'oggetto istanziato.
+
+\texttt{parse()} cicla su tutti i nodi \texttt{PARAGRAFO} estrapolandone l'eventuale ripetibilità e chiamando per ognuno la specifica funzione di mappatura del paragrafo. Tale funzione associa in primis il paragrafo al livello FRBR corrispondente, quindi procede con l'aggiunta degli statement RDF al grafo passato dal chiamante.
+
+\subsection{Ontologie utilizzate}
+Per mappare i campi della Scheda F sono state sfruttate, oltre alle ontologie citate in \ref{sec:imported-ontologies}, ulteriori ontologie di appoggio già utilizzate nel campo dell'eredità culturale. Nella fattispecie sono state importate le seguenti ontologie (riportate con il relativo prefisso e namespace):
+\begin{description}
+\footnotesize
+\item[CIDOC-CRM] (crm:) http://www.cidoc-crm.org/cidoc-crm/
+\item[Dublin Core] (dc:) http://purl.org/dc/elements/1.1/
+\item[DCMI Metadata Terms] (dcterms:) http://purl.org/dc/terms/
+\item[F Entry Ontology] (fentry:) http://www.essepuntato.it/2014/03/fentry/
+\item[FRBR] (frbr:) http://purl.org/vocab/frbr/core\#
+\item[FRBR-aligned Bibliographic Ontology] (fabio:) http://purl.org/spar/fabio/
+\item[Friend of a Friend] (foaf:) http://xmlns.com/foaf/0.1/
+\item[The PROV Ontology] (prov:) http://www.w3.org/ns/prov\#
+\item[Publishing Roles Ontology] (pro:) http://purl.org/spar/pro
+\item[Quantities, Units, Dimensions and Types] (qudt:) http://qudt.org/vocab/unit\#
+\item[The Time Ontology] (time:) http://www.w3.org/2006/time\#
+\end{description}
+
+Oltre ai namespace delle ontologie ne sono stati istanziati altri 15 con base \texttt{http://fe.fondazionezeri.unibo.it/} per indirizzare le singole istanze delle entità create durante il parsing della scheda.
+
+\subsection{Dettaglio procedurale della classe \texttt{FZeriParserSchedaF}}
+
+La classe \texttt{FZeriParserSchedaF} accetta su nuova istanziazione due parametri: l'albero XML della scheda F e il grafo RDF al quale aggiungere gli statement convertiti. L'effettiva conversione viene attuata alla chiamata del metodo \texttt{parse()}.
+
+\subsubsection{parse()}
+Il metodo \texttt{parse()} si preoccupa di inizializzare il grafo della singola scheda (con il metodo \texttt{init\_graph()}), quindi cicla su ogni nodo di tipo \texttt{PARAGRAFO}, rilevandone l'eventuale ripetibilità e passandolo come argomento al metodo preposto al parsing di quello specifico nodo, ottenuto prefissando l'attributo \texttt{etichetta} del nodo XML, normalizzato in modo da poter essere un simbolo di funzione legale, con la stringa \texttt{parse\_paragraph\_}:
+\begin{Verbatim}[fontsize=\footnotesize]
+getattr(self, "parse_paragraph_" + child.attrib["etichetta"].lower().
+        replace(' ', '_').replace('(', '').replace(')', ''))(child)
+\end{Verbatim}
+
+\subsubsection{init\_graph()}
+Il metodo \texttt{init\_graph()} è responsabile di inizializzare la conversione della scheda in statement RDF.
+
+L'assegnazione (e il mantenimento come proprietà della classe) delle proprietà \texttt{self.myentry}, \texttt{self.myphoto} e \texttt{self.production} risultano vitali in quanto tali entità rappresentano gli oggetti principali che verranno poi usati nel parsing dei singoli paragrafi per costruire il grafo di entità e relazioni.
+
+In particolare è qui che l'oggetto ``Scheda F'' viene definito come istanza di \texttt{crm:E31 Document} e di \texttt{fentry:FEntry} e l'oggetto ``Fotografia'' come istanza di \texttt{crm:E22 Man-Made Object} e di \texttt{fentry:Photograph}, rendendo subito evidente il duplice binario sul quale procede l'utilizzo delle ontologie importate. Le due istanze sono legate tra loro tramite le proprietà \texttt{crm:P70 documents} e \texttt{fentry:describes}.
+
+In questo metodo viene anche creata un'istanza di \texttt{crm:E1 CRM Entity} per rappresentare l'\emph{Opera d'arte} rappresentata dalla fotografia: le ragioni di questo sono spiegate nell'analisi del paragrafo \texttt{AUTHOR}.
+
+Nei paragrafi seguenti si farà riferimento agli oggetti ``Scheda F'' e ``Fotografia'' come \texttt{schedaF} e \texttt{photo}.
+
+\begin{quote}
+\textbf{Nota:} l'ontologia utilizzata per CIDOC-CRM (\url{http://cidoc-crm.org/rdfs/cidoc_crm_v5.0.4_official_release.rdfs}) non contiene le definizioni per le proprietà inverse (i.e. \texttt{owl:inverseOf}); è perciò stato necessario, per ogni relazione in CIDOC-CRM, aggiungere due statement l'uno inverso dell'altro così da rendere comodo l'eventuale utilizzo di ragionatori automatici.
+\end{quote}
+
+Infine, il metodo crea una nuova istanza di \texttt{crm:E12 Production}, legandola a \texttt{myphoto} tramite la proprietà \texttt{crm:P108 produced}. La necessità di creare anticipatamente l'attività di produzione della fotografia è nata dall'analisi dei dati riguardanti l'attività stessa, quasi sempre non riguardanti concretamente la medesima \emph{attività} bensì il medesimo \emph{scopo} (e.g. autorialità, stampa, pubblicazione, \ldots). Non esistendo un modo per indicare questa particolarità in CIDOC-CRM, si è scelto di creare un'unica attività di produzione della fotografia alla quale legare in seguito, attraverso la proprietà \texttt{crm:P9 consists of}, le singole istanze di \texttt{crm:E12 Production} estrapolate dai dati in input.
+
+\subsubsection{parse\_paragraph\_copyright()}
+Nel paragrafo \texttt{COPYRIGHT} è mantenuta la data di scadenza di eventuali diritti d'autore. L'informazione è stata riportata come nota allegata ad un'istanza di \texttt{crm:E30 Right} poiché i dati in input non seguono una formattazione standard in grado di essere compresa e convertita automaticamente.
+
+\subsubsection{parse\_paragraph\_notes()}
+Il semplice paragrafo \texttt{NOTES}, contenente un solo campo ad inserimento libero, viene naturalmente descritto come \texttt{Literal} legato a \texttt{photo} dalla proprietà \texttt{crm:P3 has note}.
+
+\subsubsection{parse\_paragraph\_supervisor()}
+Il paragrafo \texttt{SUPERVISOR} contiene informazioni riguardo il supervisore della catalogazione, ovvero il responsabile del controllo per la correttezza delle informazioni. Pur non essendo dettagliato come altri campi riferiti a persone fisiche, si è scelto di descriverlo con la classe \texttt{crm:E39 Actor}. Il legame con la \texttt{schedaF} avviene in due modi: il primo tramite l'attività \texttt{crm:E65 Creation}, il secondo grazie all'aggiunta della classe \texttt{foaf:Document} a \texttt{schedaF} che permette di utilizzare \texttt{pro:roleInTime} con le due proprietà \texttt{pro:relatesToDocument} e \texttt{pro:holdsRoleInTime}.
+
+\subsubsection{parse\_paragraph\_classification()}
+Le informazioni contenute nel paragrafo \texttt{CLASSIFICATION} ricadono quasi in toto nel livello \emph{Manifestation} di \texttt{photo}.
+
+Includono informazioni inventariali quali il numero di inventario, mappato in un'istanza di \texttt{crm:E42 Identifier} e la collocazione, mappata in una serie di \texttt{crm:E53 Place}. Contrariamente a quanto sarebbe istintivo pensare, la classe \texttt{crm:E53 Place} non è limitata ai luoghi fisici ma definisce anche posizioni logiche (e.g. il riferimento all'interno di uno scaffale o il numero progressivo all'interno di una serie), quindi è perfettamente in linea con i dati da rappresentare.
+
+Dal momento che la collocazione può essere espressa in maniera annidata (i.e. busta all'interno di una scatola a sua volta all'interno di un fascicolo), le istanze delle varie collocazioni vengono opportunamente annidate tramite la proprietà \texttt{crm:P59 has section (is located on or within)}.
+
+La posizione più specifica è legata a \texttt{photo} tramite la proprietà \texttt{crm:P54 has current permanent location}, scelta al posto di \texttt{crm:P55 has current location} per evidenziare la natura definitiva della collocazione.
+
+L'unico campo di questo paragrafo che interessa \texttt{schedaF} è l'identificativo che la collega alla relativa \emph{Scheda OA}, espresso con la proprietà \texttt{crm:P67 refers to} all'istanza di \texttt{crm:E31 Document}.
+
+\subsubsection{parse\_paragraph\_ownership()}
+Il paragrafo \texttt{OWNERSHIP} contiene i dati riguardanti la proprietà legale attuale di \texttt{photo}. In CIDOC-CRM tuttavia non esiste un'entità che lo esprima, pertanto è necessario descriverlo attraverso l'attività temporale che ha portato al cambio di proprietà (\texttt{crm:E8 Acquisition}) legata a \texttt{photo} con la proprietà \texttt{crm:P24 transferred title of (changed ownership through)}, attività poi legata all'appropriata istanza di \texttt{crm:E39 Actor} via \texttt{crm:P22 transferred title to}.
+
+\subsubsection{parse\_paragraph\_codes()}
+Il paragrafo \texttt{CODES} definisce una serie di codici per \texttt{schedaF}: la tipologia di scheda secondo ICCD (quindi sempre uguale al valore ``F'') è legata tramite \texttt{crm:P2 has type}, il numero identificativo e il codice regionale sono rappresentati come istanze di \texttt{crm:E42 Identifier} collegate via \texttt{crm:P48 has preferred identifier}.
+
+L'ente competente per la tutela è descritto da \texttt{crm:E40 Legal Body} e legato da \texttt{crm:P50 is current keeper of}. Per completezza è stata aggiunta anche la classe \texttt{foaf:Agent} con la proprietà \texttt{foaf:name}, mentre \texttt{pro:roleInTime} è stata usata in previsione di potenziali modifiche future dell'ente competente per la tutela.
+
+\subsubsection{parse\_paragraph\_cataloguing()}
+Le informazioni riguardo il catalogatore iniziale, i.e. il creatore della scheda, sono registrate nel paragrafo \texttt{CATALOGUING}: è perciò naturale legare \texttt{schedaF} ad un'attività \texttt{crm:E65 Creation} e quest'ultima all'istanza di \texttt{crm:E39 Actor} che rappresenta il catalogatore e all'istanza di \texttt{crm:E52 Time-Span} preposta alla descrizione della data nella quale è avvenuta la catalogazione. In questo caso, essendo una stringa formattata arbitrariamente, si è scelto di rappresentarla come \texttt{crm:E49 Time Appellation} legata al timespan tramite \texttt{crm:P78 is identified by (identifies)}.
+
+\subsubsection{parse\_paragraph\_updating()}
+Del tutto analogo al precedente, il paragrafo \texttt{UPDATING} è ripetibile e mantiene in ogni sua ripetizione i dati di tutti i catalogatori che hanno successivamente modificato la scheda. Le entità utilizzate sono le medesime, la sola differenza è nell'attività utilizzata, \texttt{crm:E81 Transformation} in luogo di \texttt{crm:E65 Creation}.
+\subsubsection{parse\_paragraph\_object()}
+All'interno del paragrafo \texttt{OBJECT} sono registrate le informazioni riguardanti l'oggetto fotografico nella sua Manifestazione (come intesa in FRBR), quindi il soggetto è \texttt{photo}. Per rappresentare tre campi (tipologia e formato) è stato scelto di utilizzare l'ontologia \emph{Dublin Core} al posto di CIDOC-CRM perché ritenuta più immediata e adeguata, nella fattispecie \texttt{dc:type} e \texttt{dc:format}.
+
+Le misure fisiche della fotografia (altezza, larghezza, spessore, diametro) nella \emph{Scheda F} sono specifiche per tipologia di misura; la genericità di CIDOC-CRM mette a disposizione una generica classe \texttt{crm:E54 Dimension}. Tale classe è stata usata per la rappresentazione delle singole misure, il cui tipo è stato quindi specificato con la proprietà \texttt{crm:P2 has type} e il cui valore con \texttt{crm:P90 has value}. Le unità di misura sono legate, in CIDOC-CRM, alla singola dimensione, a differenza di com'è specificato nel modello della Scheda F; pertanto per ogni singola dimensione istanziata ne viene impostata la tipologia con \texttt{crm:P2 has type} e l'unità di misura con \texttt{crm:P91 has unit}. Per rendere quanto più fruibili e standard anche le unità di misura, sono state convertite in modo da sfruttare l'ontologia \emph{QUDT}\footnote{\url{http://qudt.org/vocab/unit/}} attraverso l'hash \texttt{unit\_fzeri\_to\_qudt}.
+
+\subsubsection{parse\_paragraph\_subject()}
+Il paragrafo \texttt{SUBJECT} contiene informazioni riguardo il soggetto della fotografia, ovvero l'opera d'arte rappresentata. Non potendo fare assunzioni di alcun genere sulla natura del soggetto stesso, questo è descritto da un'istanza della classe \texttt{crm:E1 CRM Entity}, ovvero la classe più generica in CIDOC-CRM; è poi legato a \texttt{photo} attraverso \texttt{crm:P62 depicts}.
+
+Il dato più vicino ad un identificatore è una stringa, perciò viene legato al soggetto con \texttt{crm:P1 is identified by}; l'eventuale tipologia e nota sono legati come al solito tramite \texttt{crm:P2 has type} e \texttt{crm:P3 has note}.
+
+Un approccio diverso è stato invece adottato per rappresentare i titoli. Il modello della Scheda F predispone infatti tre diversi campi per \emph{titolo proprio}, \emph{titolo parallelo} e \emph{titolo attribuito}. Sebbene CIDOC-CRM metta a disposizione la proprietà \texttt{crm:P102 has title}, la tipologia di titolo sarebbe specificabile solamente con la sottoproprietà \texttt{crm:P102.1 has type}; RDF tuttavia non supporta proprietà di proprietà. Si è scelto quindi di sotto-classare in FEO la proprietà \texttt{crm:P102 has title} in tre diverse proprietà:
+\begin{description}
+\item[\texttt{fentry:hasProperTitle}] per il titolo proprio, inversa di \texttt{fentry:isProperTitleOf};
+\item[\texttt{fentry:hasParallelTitle}] per il titolo parallelo, inversa di \texttt{fentry:isParallelTitleOf};
+\item[\texttt{fentry:hasAttributedTitle}] per il titolo attribuito, inversa di \texttt{fentry:isAttributedTitleOf}.
+\end{description}
+
+Al titolo è stata aggiunta per apertura agli standard anche la classe \texttt{dcterms:title}.
+
+\subsubsection{parse\_paragraph\_author()}\label{sec:parse-paragraph-author}
+Il paragrafo \texttt{AUTHOR}, diversamente da tutti gli altri, si riferisce all'opera ritratta, ovvero all'autore del soggetto. Per questo motivo si è riflettuto a lungo se riportare i dati nel grafo RDF generato. Una volta implementata la mappatura e l'immissione in LOD anche per l'archivio di schede OA, tali dati saranno sicuramente ridondanti e potenzialmente ignorabili; in questo stadio di sviluppo, tuttavia, si è scelto di mantenerli per evitare la possibile perdita di informazione, seppure creando in questo modo un'entità parziale.
+
+L'oggetto \texttt{artwork} (ovvero \emph{Opera d'arte}) è stato descritto con la classe \texttt{crm:E1 CRM Entity} per evitare qualsiasi assunzione sulla sua natura. Il paragrafo \texttt{AUTHOR} è ripetibile e per ogni ripetizione viene creata un'istanza di \texttt{crm:E12 Production} alla quale viene collegata l'istanza di \texttt{crm:E39 Actor} tramite la proprietà \texttt{crm:P14 carried out by}; il nome proprio, pseudonimo e altro nome dell'autore sono descritti con istanze di \texttt{crm:E82 Actor Appellation} legate tramite \texttt{crm:P131 is identified by}.
+
+Il modello della scheda F prevede anche l'eventuale specifica del contesto culturale dell'autore (e.g. \emph{Scuola toscana}): non essendo disponibile una classe in CIDOC-CRM per mantenere questa informazione è stata definita in FEO la classe \texttt{fentry:hasCulturalContext}.
+
+\subsubsection{parse\_paragraph\_dating()}
+Le informazioni cronologiche riguardo l'oggetto fotografico sono registrate nel paragrafo \texttt{DATING}.
+
+Tali informazioni, in quanto riferite all'atto della produzione della fotografia, sono state incentrate all'attività \texttt{crm:E12 Production} di \texttt{photo}, dettagliate sfruttando la classe \texttt{crm:E52 Time-Span}. Quest'ultima classe in CIDOC-CRM è debolmente definita, nel senso che permette una grossa varietà di tipologie di input; per mantenere la granularità e non perdere informazioni si è scelto di utilizzare l'ontologia \texttt{Time} e classare il timespan anche come \texttt{time:TemporalEntity}, in modo da poterne definire inizio e fine come \texttt{time:Instant} con proprietà \texttt{time:hasBeginning} e \texttt{time:hasEnd}.
+
+Più in generale questo approccio è stato adottato in tutti gli utilizzi dove \texttt{crm:E52 Time-Span} risultava troppo poco definito per mantenere la qualità dell'informazione in input.
+
+La motivazione e sorgente dell'attribuzione\footnote{e.g. \emph{nota sul retro} o \emph{ricerca storica}} è stata descritta con \texttt{crm:E13 Attribute Assignment} e la proprietà \texttt{crm:P17 was motivated by}.
+
+\subsubsection{parse\_paragraph\_photographer()}
+Il paragrafo \texttt{PHOTOGRAPHER} è analogo ad \texttt{AUTHOR} ma si riferisce al creatore dell'oggetto fotografico; è inoltre ripetibile quindi, come già illustrato, per ogni ripetizione è stata creata un'istanza di \texttt{crm:E12 Production} legata in seguito alla \texttt{crm:E12 Production} principale tramite \texttt{crm:P9 consists of (forms part of)}.
+
+L'autore è rappresentato da un'istanza di \texttt{crm:E39 Actor} e legato all'attività via \texttt{crm:P14 performed}; a sua volta è identificato (\texttt{crm:P131 is identified by}) da una istanza \texttt{crm:E82 Actor Appellation} e può opzionalmente avere un indirizzo che è stato descritto tramite la classe \texttt{crm:E51 Contact Point}.
+
+Similarmente a quanto fatto per il paragrafo \texttt{DATING}, le motivazioni e la fonte per l'attribuzione dell'autorialità sono state rese con un'istanza di \texttt{crm:E13 Attribute Assignment} legata tramite \texttt{crm:P17 was motivated by} per quanto riguarda la motivazione e tramite \texttt{crm:P16 used specific object} per la fonte.
+
+Non esistendo in CIDOC-CRM una metodologia specifica per indicare il ruolo all'interno di un'attività senza proprietà di proprietà (non supportate da RDF), il ruolo dell'autore è stato descritto sfruttando l'ontologia PRO, nella fattispecie con la classe \texttt{pro:roleInTime} legata a \texttt{photo} con la proprietà \texttt{pro:relatesToDocument} e all'autore con \texttt{pro:holdsRoleInTime}; il ruolo stesso è stato specificato via \texttt{pro:withRole}.
+
+\subsubsection{parse\_paragraph\_production\_and\_publishing()}
+Del tutto analogo a \texttt{PHOTOGRAPHER}, il paragrafo \texttt{PRODUCTION AND PUBLISHING} (ripetibile) viene processato in maniera pressocché identica, affidandosi a PRO per la definizione del ruolo.
+
+In aggiunta ai campi presenti in \texttt{PHOTOGRAPHER}, questo paragrafo può contenere informazioni riguardo il luogo di edizione/stampa, rappresentato da un'istanza di \texttt{crm:E6 Place} legata tramite \texttt{crm:P7 took place at} alla \texttt{crm:E12 Production} relativa, e un'indicazione cronologica, per la quale è stata usata la classe \texttt{crm:E52 Time-Span} definita ulteriormente con \texttt{crm:E49 Time Appellation} (senza quindi l'utilizzo di \emph{Time Ontology}).
+
+\subsubsection{parse\_paragraph\_place\_and\_date\_of\_the\_shot()}
+Per la descrizione del paragrafo \texttt{PLACE AND DATE OF THE SHOT} è stata scelta come classe \texttt{crm:E65 Creation} perché ritenuta concettualmente più adatta di \texttt{crm:E12 Production}. Se infatti l'atto fisico dello scatto può essere vista come un'attività di produzione di un oggetto tangibile, l'atto del fotografare è più astratto e pertinente dunque ad una sfera più immateriale.
+
+\texttt{crm:E65 Creation} è legato a \texttt{photo} con la proprietà \texttt{crm:P94 created} e alle coordinate temporali tramite \texttt{crm:P4 has time-span} ad un'istanza di \texttt{crm:E52 Time-Span} ulteriormente definita da \texttt{crm:E49 Time Appellation}.
+
+Per le coordinate spaziali invece è stato scelto di descrivere l'occasione, ovvero l'evento\footnote{e.g. \emph{Asta Christie's 11/07/1980}}, nel quale la fotografia è stata scattata con la classe \texttt{crm:E4 Period}, legata all'attività di creazione dalla proprietà \texttt{crm:P10 falls within (contains)}; i dati riguardanti precise coordinate geografiche quali \emph{nazione} e \emph{città} sono invece state descritte tramite \texttt{crm:E53 Place} e incapsulate nel caso fossero presenti entrambe con la proprietà \texttt{crm:P89 falls within} già vista in precedenza.
+
+\subsubsection{parse\_paragraph\_relations\_with\_other\_photographic\_objects\_negative()}
+Il paragrafo \texttt{RELATIONS WITH OTHER PHOTOGRAPHIC OBJECTS (NEGATIVE)} contiene informazioni riguardo l'eventuale negativo/diapositiva/altro (a cui in seguito sarà fatto riferimento come ``negativo'') dal quale è stata realizzata la stampa.
+
+Il negativo è definito come \texttt{crm:E22 Man-Made Object} analogamente alla fotografia, legato a \texttt{photo} attraverso un'istanza di \texttt{crm:E12 Production} cui è collegato via \texttt{crm:P16 used specific object (was used for)}.
+
+Le informazioni registrate per il negativo sono l'identificativo, assegnato via \texttt{crm:P1 is identified by}, la tipologia, descritta in un'istanza di \texttt{crm:E55 Type} che fa riferimento ad un vocabolario controllato di ICCD e legata tramite \texttt{crm:P2 has type}, e la posizione, rappresentata da \texttt{crm:E53 Place} legato al negativo dalla proprietà \texttt{crm:P55 has current location}.
+
+\subsubsection{parse\_paragraph\_digital\_image()}
+Nel paragrafo \texttt{DIGITAL IMAGE} sono contenuti i metadati e il percorso per eventuali rappresentazioni digitali dell'oggetto fotografico.
+
+Per ogni ripetizione del paragrafo viene creata un'entità che afferisce alle classi \texttt{crm:E38 Image} e \texttt{fabio:DigitalManifestation}, quest'ultima per permettere l'impostazione della struttura FRBR tramite collegamento a \texttt{schedaF} con \texttt{fentry:describes} e a \texttt{photo} con \texttt{fabio:hasManifestation}; per quanto riguarda CIDOC-CRM invece la relazione è tramite la proprietà \texttt{crm:P138 represents} verso \texttt{photo}.
+
+Il campo con il percorso del file viene utilizzato per la creazione di una seconda entità con classi \texttt{crm:E38 Image} e \texttt{fabio:ComputerFile}, a sua volta legato all'immagine di cui sopra tramite \texttt{frbr:exemplar} e \texttt{crm:P138 represents} e a \texttt{schedaF} con \texttt{fentry:describes}.
+
+\subsubsection{parse\_paragraph\_provenance()}
+Il paragrafo ripetibile \texttt{PROVENANCE} documenta tutti i movimenti dell'oggetto fotografico nella storia conosciuta.
+
+Per rappresentare le informazioni di questo paragrafo si sono usati due oggetti principali: un'istanza di \texttt{crm:E53 Place} e un'istanza di \texttt{crm:E9 Move}, la prima legata alla seconda tramite \texttt{crm:P26 moved to (was destination of)} e la seconda legata a \texttt{photo} con \texttt{crm:P25 moved (was moved by)}.
+
+Le coordinate temporali sono legate a \texttt{crm:E9 Move} tramite \texttt{crm:E52 Time-Span}, per definire il quale è stata usata l'ontologia Time analogamente al paragrafo \texttt{DATING} e ottenendo quindi la definizione dell'inizio e della fine della permanenza in un determinato luogo.
+
+Le coordinate spaziali geografiche sono potenzialmente annidate, quindi per ognuna è stata istanziata la classe \texttt{crm:E53 Place} e infine sono state legate opportunamente tra di loro con \texttt{crm:P59 has section (is located on or within)}; la \emph{collezione} è invece stata rappresentata tramite \texttt{crm:E46 Section Definition} e legata al luogo più specifico con la proprietà \texttt{crm:P87 is identified by}.
+
+Il luogo più specifico, infine, è collegato a \texttt{photo} dalla proprietà \texttt{crm:P53 has former or current location}.
+
+\subsubsection{parse\_paragraph\_location()}
+La posizione fisica e geografica dell'oggetto fotografico è indicata nel paragrafo \texttt{LOCATION}.
+
+Tale posizione è chiaramente descritta come istanza di \texttt{crm:E53 Place} legato a \texttt{photo} da \texttt{crm:P55 has current location}; anche qui, analogamente ad altri paragrafi, ci sono una serie di specifiche geografie annidate (i.e. regione, provincia, città, archivio) per ognuna delle quali viene istanziata una \texttt{crm:E53 Place}, gestendo in seguito gli annidamenti con la proprietà \texttt{crm:P59 has section (is located on or within)}.
+
+Si è scelto invece di descrivere i dati riguardanti la \emph{collezione} e la \emph{posizione precisa} (sezione) tramite legami \texttt{crm:P87 is identified by} alla \texttt{crm:E53 Place} più specifica.
+
+\subsubsection{parse\_paragraph\_state\_of\_preservation()}
+Per le condizioni di conservazione registrate nel paragrafo \texttt{STATE OF PRESERVATION}, CIDOC-CRM offre la classe \texttt{crm:E3 Condition State}, legata a \texttt{photo} da \texttt{crm:P44 has condition}.
+
+La condizione viene definita con una \texttt{rdfs:label} e ne viene registrata la tipologia con un legame \texttt{crm:P2 has type} verso un'istanza di \texttt{crm:E55 Type} scelta in un vocabolario controllato di ICCD.
+
+\subsubsection{parse\_paragraph\_relation\_to\_other\_objects()}
+Le eventuali relazioni con altri oggetti espresse nel paragrafo \texttt{RELATION TO OTHER OBJECTS}, non avendo dei precisi riferimenti quali identificativi, collocazioni, etc\ldots sono descritte in CIDOC-CRM come legami da \texttt{photo} a \texttt{crm:E18 Physical Thing} via \texttt{crm:P46 is composed of (forms part of)}.

@@ -1,0 +1,10 @@
+\chapter{Campi del dataset Zeri effettivamente in uso}
+\rhead[\fancyplain{}{\bfseries \thechapter \:Campi del dataset Zeri effettivamente in uso}]
+{\fancyplain{}{\bfseries\thepage}}
+
+Durante l'analisi degli XML in input si è reso necessario avere un'istantanea della situazione reale, ovvero dei paragrafi e dei campi effettivamente utilizzati e della loro struttura per come traspariva dal dump XML; affidarsi all'analisi del singolo record non era fattibile in quanto non necessariamente in un dato record vengono compilati tutti i campi, alcuni dei quali sono per giunta mutualmente esclusivi tra di loro.
+
+È stato quindi scritto un programma (\texttt{schema\_builder.py}) che effettuasse il parsing di tutto l'XML in input e ne costruisse un record fasullo contenente ogni campo in uso nell'intero dataset, contenente ovviamente informazioni incoerenti all'interno dello stesso record ma utile per la revisione della struttura e la scrittura dell'algoritmo di parsing del dataset.
+
+\lstinputlisting[caption=Elenco di tutti i campi effettivamente in uso nel dataset XML fornito dalla Fondazione Zeri e loro possibile valore, label=listing:fzeri-fakerecord]{../zerielode/catalog_schema.txt}
+

@@ -1,0 +1,22 @@
+\chapter*{Conclusioni}
+\rhead[\fancyplain{}{\bfseries
+CONCLUSIONI}]{\fancyplain{}{\bfseries\thepage}}
+\lhead[\fancyplain{}{\bfseries\thepage}]{\fancyplain{}{\bfseries
+CONCLUSIONI}}
+
+\addcontentsline{toc}{chapter}{Conclusioni} 
+
+Il progetto \emph{Zeri e LODE}, pur ponendosi come obiettivo principale la conversione dell'attuale base informativa dell'archivio fotografico della Fondazione Zeri in un dataset RDF e il successivo inserimento nella rete dei LOD, si offre come base metodologica per conversioni di altre collezioni analoghe di materiale fotografico.
+
+L'archivio Zeri è una fra le più importanti collezioni di fotografie di opere d'arte a livello mondiale; la possibilità di analizzare la molteplicità e variabilità delle catalogazioni ivi contenute ha permesso di approfondire lo sviluppo considerando diversi scenari e svariate interpretazioni nella mappatura da un modello ricco e piatto quale quello della Scheda F disegnata dall'Istituto Centrale per il Catalogo e la Documentazione (ICCD) ad un modello articolato e generico quale CIDOC-CRM.
+
+Grazie a questo sono state poste delle solide basi di modellazione grazie alla realizzazione della F Entry Ontology (FEO) che accompagna ed estende lo standard di CIDOC-CRM nei punti ritenuti carenti o troppo generici.
+
+Terminata la fase di sviluppo degli strumenti per la conversione, la naturale prosecuzione del progetto prevede la creazione di un triple store e una prima esportazione dell'archivio convertito in un dataset pubblicamente accessibile; quindi sarà necessario collegare i dati al dominio LOD (e.g. \emph{DBPedia}\footnote{\url{http://dbpedia.org}}, \emph{Europeana}\footnote{\url{http://europeana.eu/}}, \emph{ResearchSpace}\footnote{\url{http://www.researchspace.org}}, \emph{VIAF}\footnote{\url{http://viaf.org}}, etc\ldots\footnote{una lista parziale si trova in \url{http://linkeddata.org/data-sets}}).
+
+Il passo successivo è naturalmente lo sviluppo di un'interfaccia navigabile e ricercabile per la presentazione del dataset contenuto nel triple store, rendendola responsiva e accessibile, basata su interrogazioni incentrate sui facet, come ad esempio il modello di \emph{Virtuoso} usato da \emph{Dbpedia}\footnote{\url{http://dbpedia.org/fct/}}, oppure sfruttando framework quali \emph{Sesame}\footnote{\url{http://www.openrdf.org}}.\\
+L'obiettivo principale dovrebbe in ogni caso essere quello di rendere l'interfaccia accessibile e usabile anche e soprattutto da browser Web Semantici\footnote{alcuni riportati in \url{http://wiki.dbpedia.org/OnlineAccess\#h28-13}}.
+
+Un ulteriore sviluppo inoltre potrebbe considerare l'implementazione in FEO dei vocabolari controllati di ICCD utilizzati per la compilazione dei campi della Scheda F, oltre alla realizzazione di un'analoga mappatura e conversione per il modello \emph{Scheda OA} di ICCD, così da avere i due cataloghi paralleli e sfruttare i riferimenti incrociati\footnote{a questo proposito si ricordi di eliminare o uniformare la mappatura delle informazioni sull'autore dell'opera provenienti dal paragrafo \texttt{AUTHOR} della Scheda F - cfr.~\ref{sec:parse-paragraph-author}}.
+
+Le considerazioni sulla mappatura potrebbero essere, infine, ulteriormente estese, anche grazie all'analisi di ulteriori casi di studio: le entità e le proprietà offerte da CIDOC-CRM sono adeguate a descrivere un archivio fotografico con sufficiente particolarità, oppure sussiste la necessità di estendere CIDOC-CRM per non rischiare di perdere informazioni?

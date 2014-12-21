@@ -1,0 +1,25 @@
+\chapter{Introduzione}
+
+La gestione dell'informatizzazione degli archivi riguardanti beni culturali e eredità culturale è da tempo argomento di discussione critico sia per gli archivisti che per gli informatici.
+
+Da quando i computer sono diventati parte della vita e delle tecnologie utilizzate quotidianamente, la sfida, in questo come in altri campi, è quella di ``informatizzare'' gli storici cataloghi cartacei, ovvero trasformare schedari, libri mastri e altre forme di catalogazione in dati gestibili da una macchina.
+
+Tale sfida risulta ancora più difficile se si aggiunge, oltre alla indispensabile elaborazione e trascrittura dei dati, l'analisi, la scelta e la modellazione di formati fruibili e interoperabili tra di loro, la creazione cioè di standard che possano essere di riferimento alle varie entità deputate alla conservazione di tali dati; per dare una soluzione a questo problema, nel tempo si sono costituiti gruppi più o meno autorevoli e ognuno ha prodotto dei modelli più o meno utilizzabili e allo stesso modo più o meno diffusi e applicati.
+
+Oltre a questa frammentazione, normalmente a livello nazionale, i modelli definiti soffrono spesso, in particolare i più datati, di una significativa aderenza al modello precedente, ovvero la scheda cartacea, con la conseguente definizione di standard molto ricchi in dettaglio ma poveri in profondità e riferimenti incrociati: è il caso, ad esempio nel mondo bibliografico, dei vari standard \emph{MARC}\footnote{\url{http://www.loc.gov/marc/}} nazionali e del tentativo di unificarli con il modello \emph{Unimarc}\footnote{\url{http://it.wikipedia.org/wiki/UNIMARC}}.
+
+Lo sforzo è quindi quello di ripensare i modelli esistenti in un'ottica di unificazione, in particolare grazie all'evoluzione del web e all'imponente crescita dei LOD (vedi~\ref{sec:semantic-web}), per riconvertire le informazioni in dati collegati e disponibili in rete.
+
+In questa relazione verrà esaminato un caso concreto di questa esigenza di riconversione e apertura: l'archivio fotografico della \emph{Fondazione Federico Zeri}, una delle più grandi collezioni di fotografie di opere d'arte esistenti a livello mondiale.
+
+Per l'informatizzazione e la catalogazione dell'eredità culturale, in Italia il Ministero dei Beni Culturali ha istituito un gruppo, l'\emph{Istituto Centrale per il Catalogo e la Documentazione} (ICCD) il quale, tra le altre cose, ha prodotto una serie di normative e modelli\footnote{\url{http://www.iccd.beniculturali.it/index.php?it/204/normative}} da utilizzare a seconda della natura del bene in questione.
+
+Il modello per la fotografia è chiamato \emph{Scheda F} e contiene un ricco insieme di campi per la descrizione degli oggetti fotografici, pur soffrendo delle limitazioni viste poc'anzi. Tale modello è quello utilizzato dalla \emph{Fondazione Federico Zeri} per il catalogo dell'importante archivio fotografico raccolto da Zeri durante la sua carriera; le singole schede sono disponibili per la visualizzazione, grazie anche all'imponente lavoro di digitalizzazione, online.
+
+L'obiettivo del progetto è portare tale disponibilità di informazione ad un livello successivo, standard, fruibile e interoperabile tramite la conversione dell'attuale base di dati nel dominio di Linked Open Data, strutturando il modello in modo che possa essere da esempio per progetti di conversione di archivi analoghi.
+
+È stata quindi effettuata un'analisi approfondita sulla struttura dei dati attuale e sulle ontologie disponibili e utilizzate al momento nel campo dell'eredità culturale, che ha permesso di formulare una mappatura delle informazioni catalografiche in statement RDF e la modellazione di un'ontologia specifica definita \emph{F Entry Ontology} (cap.~\ref{chap:mapping}).
+
+Di rilevanza fondamentale durante la fase di analisi e modellazione è stata la necessità di avere una mappatura che permettesse il maggior grado possibile di automazione, vista l'imponenza degli archivi di partenza.
+
+L'effettiva implementazione (cap.~\ref{chap:implementation}) è stata realizzata in un set di script Python tenendo presente i requisiti di modularità, flessibilità e riuso del codice.

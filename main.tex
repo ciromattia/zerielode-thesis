@@ -1,0 +1,161 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%12pt: grandezza carattere
+                                        %a4paper: formato a4
+                                        %openright: apre i capitoli a destra
+                                        %twoside: serve per fare un
+                                        %   documento fronteretro
+                                        %report: stile tesi (oppure book)
+\documentclass[12pt,a4paper,openright,twoside]{report}
+
+\usepackage[italian]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{fancyhdr}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{newlfont}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[hyphenbreaks]{breakurl}
+\usepackage[hyphens]{url}
+\usepackage{longtable}
+\usepackage{colortbl}
+\usepackage{fancyvrb}
+\usepackage{multirow}
+\usepackage[font={footnotesize}]{caption}
+
+\hfuzz=30pt
+\vfuzz=30pt
+\hbadness=10000
+\vbadness=\maxdimen
+
+\sloppy
+
+\definecolor{gray}{rgb}{0.4,0.4,0.4}
+\definecolor{darkblue}{rgb}{0.0,0.0,0.6}
+\definecolor{cyan}{rgb}{0.0,0.6,0.6}
+\definecolor{lightcyan}{rgb}{0,1,1}
+\definecolor{yellow}{rgb}{1,1,0}
+\definecolor{lightyellow}{rgb}{1,1,0.6}
+
+\renewcommand{\lstlistingname}{Listato}
+\lstset{
+  inputencoding=ansinew,
+  breaklines=true,
+  basicstyle=\ttfamily\scriptsize,
+  columns=fullflexible,
+  showstringspaces=false,
+  commentstyle=\color{gray}\upshape,
+  literate=%
+  {à}{{\`a}}1
+  {ò}{{\`o}}1
+  {ö}{{\"o}}1
+}
+\lstdefinelanguage{XML}
+{
+  morestring=[b]",
+  morestring=[s]{>}{<},
+  morecomment=[s]{<?}{?>},
+  stringstyle=\color{black},
+  identifierstyle=\color{darkblue},
+  keywordstyle=\color{cyan},
+  morekeywords={xmlns,version,type}
+}
+
+
+\def\signed #1{{\leavevmode\unskip\nobreak\hfil\penalty50\hskip2em
+  \hbox{}\nobreak\hfil(#1)%
+  \parfillskip=0pt \finalhyphendemerits=0 \endgraf}}
+
+\newsavebox\mybox
+\newenvironment{aquote}[1]
+  {\savebox\mybox{#1}\begin{quote}}
+  {\signed{\usebox\mybox}\end{quote}}
+
+\oddsidemargin=30pt \evensidemargin=20pt
+\hyphenation{sil-la-ba-zio-ne pa-ren-te-si}
+
+\pagestyle{fancy}\addtolength{\headwidth}{20pt}\addtolength{\headheight}{15pt}
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ #1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection \ #1}{}}
+\rhead[\fancyplain{}{\bfseries\leftmark}]{\fancyplain{}{\bfseries\thepage}}
+\cfoot{}
+
+\linespread{1.3}
+
+\begin{document}
+\begin{titlepage}
+\thispagestyle{empty}
+\topmargin=6.5cm
+\raggedleft
+\large
+\em
+A papà e mamma.
+\newpage
+\clearpage{\pagestyle{empty}\cleardoublepage}
+\end{titlepage}
+
+\pagenumbering{roman}
+
+% table of contents
+\tableofcontents
+\rhead[\fancyplain{}{\bfseries\leftmark}]{\fancyplain{}{\bfseries\thepage}}
+\lhead[\fancyplain{}{\bfseries\thepage}]{\fancyplain{}{\bfseries
+INDICE}}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+% figures list
+\listoffigures
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+%\lstlistoflistings
+%\clearpage{\pagestyle{empty}\cleardoublepage}
+
+% tables list
+\listoftables
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+\lhead[\fancyplain{}{\bfseries\thepage}]{\fancyplain{}{\bfseries\rightmark}}
+\pagenumbering{arabic}
+
+\include{include/introduzione}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+\include{include/contesto}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+\include{include/progetto}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+\include{include/mappatura}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+\include{include/implementazione}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+\include{include/valutazione}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+\include{include/conclusioni}
+
+\renewcommand{\chaptermark}[1]{\markright{\thechapter \ #1}{}}
+\lhead[\fancyplain{}{\bfseries\thepage}]{\fancyplain{}{\bfseries\rightmark}}
+\appendix
+
+\include{include/a1_appendix01}
+\include{include/a2_appendix02}
+\include{include/a3_appendix03}
+\include{include/a4_appendix04}
+
+\include{include/b0_bibliografia}
+\clearpage{\pagestyle{empty}\cleardoublepage}
+
+
+\pagestyle{plain}
+
+\include{include/b1_ringraziamenti}
+\end{document}
+
